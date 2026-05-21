@@ -1,10 +1,4 @@
-const withNextIntl = require('next-intl/withNextIntl');
-
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  experimental: {
-    isrMemoryCacheSize: 0
-  }
-};
+const nextConfig = {};
 
-module.exports = withNextIntl(nextConfig);
+module.exports = nextConfig;
