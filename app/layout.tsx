@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
 import "./globals.css";
 
 const locales = ['en', 'de', 'ar', 'ku'];
@@ -14,13 +13,15 @@ export function generateStaticParams() {
   return locales.map((locale) => ({locale}));
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
-  params: {locale}
+  params,
 }: {
   children: React.ReactNode;
-  params: {locale: string};
+  params: Promise<{ locale: string }>;
 }) {
+  const { locale } = await params;
+  
   const isValidLocale = locales.some(cur => cur === locale);
   if (!isValidLocale) notFound();
 
