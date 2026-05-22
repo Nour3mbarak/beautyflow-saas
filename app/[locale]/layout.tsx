@@ -1,5 +1,3 @@
-export const dynamic = 'force-dynamic';
-
 import { notFound } from 'next/navigation';
 import { Providers } from './provider';
 
@@ -21,11 +19,11 @@ export default async function LocaleLayout({
   const isValidLocale = locales.some(cur => cur === locale);
   if (!isValidLocale) notFound();
 
-  // Load messages
   const messages = (await import(`../../public/locales/${locale}/messages.json`)).default;
 
   return (
     <html lang={locale}>
+      <head />
       <body>
         <Providers locale={locale} messages={messages}>
           {children}
