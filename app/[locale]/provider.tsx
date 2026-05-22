@@ -12,6 +12,10 @@ export function Providers({
   locale: string;
   messages: any;
 }) {
+  if (!messages) {
+    return <>{children}</>;
+  }
+
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       {children}
