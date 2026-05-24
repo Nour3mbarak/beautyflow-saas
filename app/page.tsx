@@ -1,5 +1,3 @@
-'use client';
-
 export default function Home() {
   return (
     <div className="min-h-screen bg-white">
@@ -8,10 +6,16 @@ export default function Home() {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900">BeautyFlow</h1>
           <div className="flex gap-6">
-            <a href="#" className="text-gray-700 hover:text-gray-900">Home</a>
-            <a href="#" className="text-gray-700 hover:text-gray-900">Features</a>
-            <a href="#" className="text-gray-700 hover:text-gray-900">Pricing</a>
-            <a href="#" className="text-gray-700 hover:text-gray-900">Contact</a>
+            <a href="/" className="text-gray-700 hover:text-gray-900">Home</a>
+            <a href="#features" className="text-gray-700 hover:text-gray-900">Features</a>
+            <a href="#pricing" className="text-gray-700 hover:text-gray-900">Pricing</a>
+            <a href="#contact" className="text-gray-700 hover:text-gray-900">Contact</a>
+            <div className="flex gap-2">
+              <a href="/" className="px-2 py-1 rounded bg-blue-600 text-white text-sm">EN</a>
+              <a href="/de" className="px-2 py-1 rounded hover:bg-gray-200 text-sm">DE</a>
+              <a href="/ar" className="px-2 py-1 rounded hover:bg-gray-200 text-sm">AR</a>
+              <a href="/ku" className="px-2 py-1 rounded hover:bg-gray-200 text-sm">KU</a>
+            </div>
           </div>
         </div>
       </nav>
