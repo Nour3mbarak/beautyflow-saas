@@ -1,6 +1,13 @@
+export const metadata = {
+  title: "BeautyFlow",
+  description: "Salon Management Platform",
+};
+
 export default function ArHome() {
   return (
-    <div className="min-h-screen bg-white">
+    <html lang="ar">
+      <body>
+        <div className="min-h-screen bg-white">
       {/* Navigation */}
       <nav className="border-b border-gray-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -38,5 +45,7 @@ export default function ArHome() {
         © 2024 BeautyFlow. جميع الحقوق محفوظة.
       </footer>
     </div>
+  </body>
+</html>
   );
 }
