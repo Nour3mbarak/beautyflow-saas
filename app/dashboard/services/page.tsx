@@ -64,38 +64,56 @@ export default function ServicesPage() {
   };
 
   const handleAddService = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (!salonId) return;
+  if (!salonId) {
+    alert('Salon ID nicht gefunden!');
+    return;
+  }
 
-    try {
-      const { data, error } = await supabase
-        .from('services')
-        .insert([{
-          salon_id: salonId,
-          name: formData.name,
-          description: formData.description,
-          price: parseFloat(formData.price),
-          duration_minutes: parseInt(formData.duration_minutes),
-          icon: formData.icon,
-        }])
-        .select();
+  if (!formData.name || !formData.price) {
+    alert('Bitte Name und Preis ausfüllen!');
+    return;
+  }
 
-      if (error) throw error;
+  setLoading(true);
 
-      setServices([...services, data[0]]);
-      setFormData({
-        name: '',
-        description: '',
-        price: '',
-        duration_minutes: '30',
-        icon: '💇',
-      });
-      setShowForm(false);
-    } catch (error) {
+  try {
+    const { data, error } = await supabase
+      .from('services')
+      .insert([{
+        salon_id: salonId,
+        name: formData.name,
+        description: formData.description,
+        price: parseFloat(formData.price),
+        duration_minutes: parseInt(formData.duration_minutes),
+        icon: formData.icon,
+      }])
+      .select();
+
+    if (error) {
+      alert('Error: ' + error.message);
       console.error('Error:', error);
+      return;
     }
-  };
+
+    setServices([...services, data[0]]);
+    setFormData({
+      name: '',
+      description: '',
+      price: '',
+      duration_minutes: '30',
+      icon: '💇',
+    });
+    setShowForm(false);
+    alert('✓ Service hinzugefügt!');
+  } catch (error: any) {
+    alert('Error: ' + error.message);
+    console.error('Error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleDeleteService = async (id: string) => {
     try {
