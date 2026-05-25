@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js'; // ← NEU
+
 
 export default function SetupPage() {
   const [salonName, setSalonName] = useState('');
@@ -15,45 +17,61 @@ export default function SetupPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    if (!salonName.trim()) {
-      setError('Salon Name erforderlich!');
+  if (!salonName.trim()) {
+    setError('Salon Name erforderlich!');
+    setLoading(false);
+    return;
+  }
+
+  try {
+    // ← NEU: Token vom Client holen
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      setError('Nicht eingeloggt. Bitte zuerst anmelden.');
       setLoading(false);
       return;
     }
 
-    try {
-      const response = await fetch('/api/salon/setup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: salonName,
-          address,
-          phone,
-          email,
-          description,
-          opening_time: openingTime,
-          closing_time: closingTime,
-        }),
-      });
+    const response = await fetch('/api/salon/setup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`, // ← NEU
+      },
+      body: JSON.stringify({
+        name: salonName,
+        address,
+        phone,
+        email,
+        description,
+        opening_time: openingTime,
+        closing_time: closingTime,
+      }),
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (data.success) {
-        router.push('/dashboard');
-      } else {
-        setError(data.error || 'Setup failed');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Fehler');
-    } finally {
-      setLoading(false);
+    if (data.success) {
+      router.push('/dashboard');
+    } else {
+      setError(data.error || 'Setup failed');
     }
-  };
+  } catch (err: any) {
+    setError(err.message || 'Fehler');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
