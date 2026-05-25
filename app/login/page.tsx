@@ -26,7 +26,7 @@ export default function LoginPage() {
       const data = await response.json();
       
       if (data.success) {
-        router.push('/dashboard');
+        router.push(data.redirect || '/dashboard');
       } else {
         setError(data.error || 'Login fehlgeschlagen');
       }
@@ -45,12 +45,34 @@ export default function LoginPage() {
         {error && <div className="bg-red-100 text-red-700 p-2 rounded mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-3 py-2 border rounded" />
-          <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-3 py-2 border rounded" />
-          <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-2 rounded">{loading ? 'Loading...' : 'Login'}</button>
+          <input 
+            type="email" 
+            placeholder="Email" 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)} 
+            required 
+            className="w-full px-3 py-2 border rounded" 
+          />
+          <input 
+            type="password" 
+            placeholder="Password" 
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)} 
+            required 
+            className="w-full px-3 py-2 border rounded" 
+          />
+          <button 
+            type="submit" 
+            disabled={loading} 
+            className="w-full bg-blue-600 text-white py-2 rounded"
+          >
+            {loading ? 'Loading...' : 'Login'}
+          </button>
         </form>
 
-        <p className="text-center mt-4"><Link href="/signup" className="text-blue-600">Sign up</Link></p>
+        <p className="text-center mt-4">
+          <Link href="/signup" className="text-blue-600">Sign up</Link>
+        </p>
       </div>
     </div>
   );
