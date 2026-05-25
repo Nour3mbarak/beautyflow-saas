@@ -69,7 +69,7 @@ export default function DashboardPage() {
             <p className="text-green-600 text-sm mt-2">All active</p>
           </div>
         </div>
-        {/* Navigation */}
+{/* Navigation */}
 <div className="bg-white shadow mb-6">
   <div className="max-w-7xl mx-auto px-6 py-4 flex gap-6">
     <a href="/dashboard" className="font-bold text-blue-600">Dashboard</a>
