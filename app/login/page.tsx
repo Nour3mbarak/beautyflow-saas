@@ -3,17 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js'; // ← NEU
+import { supabase } from '@/lib/supabase';
 
-// ← NEU: einmal außerhalb erstellen
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-export default function LoginPage() {
+export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -24,20 +19,14 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // ← NEU: direkt mit Supabase einloggen (speichert Session im Browser)
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: { data: { full_name: name } },
       });
 
-      if (error) {
-        setError(error.message);
-        return;
-      }
-
-      // Session ist jetzt im Browser gespeichert ✓
-      router.push('/dashboard');
-
+      if (error) { setError(error.message); return; }
+      if (data.user) router.push('/setup');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -45,65 +34,77 @@ export default function LoginPage() {
     }
   };
 
-  // ... Rest bleibt gleich, nur autocomplete hinzufügen:
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">BeautyFlow</h1>
-        <p className="text-gray-600 mb-6">Willkommen zurück!</p>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50 flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 rounded-full text-sm font-bold tracking-widest mb-6">
+            ✦ BEAUTYFLOW
           </div>
-        )}
+          <h1 className="text-4xl font-black text-gray-900 mb-2">Konto erstellen</h1>
+          <p className="text-gray-500">Starte dein Salon-Business</p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 focus:border-blue-600 focus:outline-none"
-              placeholder="dein@salon.de"
-            />
-          </div>
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 text-sm">
+              ❌ {error}
+            </div>
+          )}
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Passwort
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-               autoComplete="current-password"
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 focus:border-blue-600 focus:outline-none"
-              placeholder="••••••••"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Vollständiger Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                autoComplete="name"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-black focus:outline-none transition"
+                placeholder="Max Mustermann"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-black focus:outline-none transition"
+                placeholder="dein@salon.de"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Passwort</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+                minLength={8}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-black focus:outline-none transition"
+                placeholder="Min. 8 Zeichen"
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition disabled:opacity-50"
-          >
-            {loading ? 'Lädt...' : 'Login'}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-black hover:bg-gray-800 text-white font-bold py-3.5 rounded-xl transition disabled:opacity-40"
+            >
+              {loading ? 'Wird erstellt...' : 'Registrieren →'}
+            </button>
+          </form>
 
-        <p className="text-center text-gray-600 mt-6">
-          Noch kein Konto?{' '}
-          <Link href="/signup" className="text-blue-600 hover:underline font-semibold">
-            Jetzt registrieren
-          </Link>
-        </p>
+          <p className="text-center text-gray-500 text-sm mt-6">
+            Bereits registriert?{' '}
+            <Link href="/login" className="text-black font-bold hover:underline">Einloggen</Link>
+          </p>
+        </div>
       </div>
     </div>
   );

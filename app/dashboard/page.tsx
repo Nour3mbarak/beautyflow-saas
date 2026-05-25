@@ -1,122 +1,138 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import Link from 'next/link';
+
 export default function DashboardPage() {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <nav className="bg-white shadow px-6 py-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">BeautyFlow</h1>
-          <div className="flex gap-6">
-            <a href="/" className="text-gray-700 hover:text-gray-900">Home</a>
-            <a href="/dashboard" className="text-blue-600 font-semibold">Dashboard</a>
-          </div>
-        </div>
-      </nav>
+  const [stats, setStats] = useState({ services: 0, staff: 0, appointments: 0, revenue: 0 });
+  const [salonName, setSalonName] = useState('');
+  const [todayAppointments, setTodayAppointments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-      {/* Main */}
-      <main className="max-w-7xl mx-auto px-6 py-12">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome to BeautyFlow</h2>
-          <p className="text-gray-600">Manage your salon with ease</p>
-        </div>
+  useEffect(() => { loadStats(); }, []);
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Appointments */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Appointments</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">24</p>
-              </div>
-              <div className="text-4xl">📅</div>
-            </div>
-            <p className="text-green-600 text-sm mt-2">+12% from last week</p>
-          </div>
+  const loadStats = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-          {/* Customers */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Customers</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">156</p>
-              </div>
-              <div className="text-4xl">👥</div>
-            </div>
-            <p className="text-green-600 text-sm mt-2">+8% from last month</p>
-          </div>
+      const { data: salon } = await supabase
+        .from('salons').select('id, name').eq('user_id', session.user.id).single();
+      if (!salon) return;
 
-          {/* Revenue */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Revenue</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">€4,250</p>
-              </div>
-              <div className="text-4xl">💰</div>
-            </div>
-            <p className="text-green-600 text-sm mt-2">+23% from last week</p>
-          </div>
+      setSalonName(salon.name);
 
-          {/* Team */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Team Members</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">5</p>
-              </div>
-              <div className="text-4xl">🧑‍💼</div>
-            </div>
-            <p className="text-green-600 text-sm mt-2">All active</p>
-          </div>
-        </div>
-{/* Navigation */}
-<div className="bg-white shadow mb-6">
-  <div className="max-w-7xl mx-auto px-6 py-4 flex gap-6">
-    <a href="/dashboard" className="font-bold text-blue-600">Dashboard</a>
-    <a href="/dashboard/services" className="text-gray-600 hover:text-gray-900">Dienstleistungen</a>
-    <a href="/dashboard/staff" className="text-gray-600 hover:text-gray-900">Personal</a>
-    <a href="/dashboard/appointments" className="text-gray-600 hover:text-gray-900">Termine</a>
-  </div>
-</div>
+      const [servicesRes, staffRes, appointmentsRes] = await Promise.all([
+        supabase.from('services').select('id', { count: 'exact' }).eq('salon_id', salon.id),
+        supabase.from('staff').select('id', { count: 'exact' }).eq('salon_id', salon.id),
+        supabase.from('appointments').select('*').eq('salon_id', salon.id),
+      ]);
 
-        {/* Recent Appointments */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Recent Appointments</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Customer</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Service</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Time</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b hover:bg-gray-50">
-                  <td className="py-3 px-4">Sarah Johnson</td>
-                  <td className="py-3 px-4">Hair Cut</td>
-                  <td className="py-3 px-4">10:00 AM</td>
-                  <td className="py-3 px-4"><span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">Confirmed</span></td>
-                </tr>
-                <tr className="border-b hover:bg-gray-50">
-                  <td className="py-3 px-4">Emma Davis</td>
-                  <td className="py-3 px-4">Makeup</td>
-                  <td className="py-3 px-4">11:30 AM</td>
-                  <td className="py-3 px-4"><span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">Confirmed</span></td>
-                </tr>
-                <tr className="hover:bg-gray-50">
-                  <td className="py-3 px-4">Lisa Wilson</td>
-                  <td className="py-3 px-4">Nails</td>
-                  <td className="py-3 px-4">2:00 PM</td>
-                  <td className="py-3 px-4"><span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">Pending</span></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </main>
+      const appointments = appointmentsRes.data || [];
+      const revenue = appointments
+        .filter(a => a.status === 'completed')
+        .reduce((sum, a) => sum + (a.price || 0), 0);
+
+      const today = new Date().toISOString().split('T')[0];
+      const todayAppts = appointments.filter(a => a.date === today);
+
+      setStats({
+        services: servicesRes.count || 0,
+        staff: staffRes.count || 0,
+        appointments: appointments.length,
+        revenue,
+      });
+      setTodayAppointments(todayAppts);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cards = [
+    { label: 'Services',    value: stats.services,    icon: '💇', href: '/dashboard/services',     color: 'bg-blue-50 text-blue-700'   },
+    { label: 'Mitarbeiter', value: stats.staff,        icon: '👥', href: '/dashboard/staff',        color: 'bg-purple-50 text-purple-700'},
+    { label: 'Termine',     value: stats.appointments, icon: '📅', href: '/dashboard/appointments', color: 'bg-green-50 text-green-700'  },
+    { label: 'Umsatz',      value: `${stats.revenue}€`, icon: '💰', href: '/dashboard/revenue',     color: 'bg-amber-50 text-amber-700'  },
+  ];
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="text-gray-400 text-lg">Lädt...</div>
     </div>
-    
+  );
+
+  return (
+    <div className="p-6 lg:p-10 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="mb-10">
+        <h1 className="text-3xl font-black text-gray-900 mb-1">Guten Tag! 👋</h1>
+        <p className="text-gray-500 text-lg">{salonName}</p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+        {cards.map(({ label, value, icon, href, color }) => (
+          <Link key={label} href={href}
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition group">
+            <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl ${color} text-2xl mb-4`}>
+              {icon}
+            </div>
+            <div className="text-3xl font-black text-gray-900 mb-1">{value}</div>
+            <div className="text-sm text-gray-500 font-medium">{label}</div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Today's appointments */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-black text-gray-900">Heutige Termine</h2>
+          <Link href="/dashboard/appointments" className="text-sm text-gray-500 hover:text-black transition">
+            Alle anzeigen →
+          </Link>
+        </div>
+
+        {todayAppointments.length === 0 ? (
+          <div className="text-center py-8 text-gray-400">
+            <div className="text-4xl mb-2">📅</div>
+            <p>Keine Termine für heute</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {todayAppointments.map(appt => (
+              <div key={appt.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <div>
+                  <p className="font-bold text-gray-900">{appt.client_name}</p>
+                  <p className="text-sm text-gray-500">{appt.service_name} · {appt.time}</p>
+                </div>
+                <span className={`text-xs font-bold px-3 py-1 rounded-full
+                  ${appt.status === 'completed' ? 'bg-green-100 text-green-700' :
+                    appt.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                    'bg-blue-100 text-blue-700'}`}>
+                  {appt.status === 'completed' ? 'Abgeschlossen' :
+                   appt.status === 'cancelled' ? 'Storniert' : 'Geplant'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Quick links */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+        {[
+          { href: '/dashboard/services', label: 'Service hinzufügen', icon: '➕' },
+          { href: '/dashboard/staff', label: 'Mitarbeiter verwalten', icon: '👤' },
+          { href: '/dashboard/appointments', label: 'Termin buchen', icon: '📋' },
+        ].map(({ href, label, icon }) => (
+          <Link key={href} href={href}
+            className="bg-black text-white rounded-2xl p-5 hover:bg-gray-800 transition flex items-center gap-3 font-bold">
+            <span className="text-xl">{icon}</span>
+            <span className="text-sm">{label}</span>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }

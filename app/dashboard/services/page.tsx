@@ -1,340 +1,163 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
+import { supabase } from '@/lib/supabase';
 
 interface Service {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  duration_minutes: number;
-  icon: string;
+  id: string; name: string; description: string;
+  price: number; duration_minutes: number; icon: string;
 }
+
+const ICONS = ['💇', '💅', '🧖', '💆', '✂️', '🪮', '💄', '🧴', '🛁', '🌿'];
 
 export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: '',
-    duration_minutes: '30',
-    icon: '💇',
-  });
+  const [salonId, setSalonId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [salonId, setSalonId] = useState('');
+  const [form, setForm] = useState({ name: '', description: '', price: '', duration_minutes: '30', icon: '💇' });
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
-      console.log('Loading data...');
-      
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-        setError('Session error');
-        return;
-      }
-      
-      if (!session) {
-        console.error('No session');
-        setError('Not logged in');
-        return;
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-      console.log('User ID:', session.user.id);
+      const { data: salon } = await supabase.from('salons').select('id').eq('user_id', session.user.id).single();
+      if (!salon) { setError('Salon nicht gefunden'); return; }
 
-      const { data: salonData, error: salonError } = await supabase
-        .from('salons')
-        .select('id')
-        .eq('user_id', session.user.id)
-        .single();
-
-      if (salonError) {
-        console.error('Salon error:', salonError);
-        setError('Salon nicht gefunden - bitte Setup durchführen!');
-        return;
-      }
-
-      if (!salonData) {
-        console.error('No salon data');
-        setError('Salon nicht gefunden');
-        return;
-      }
-
-      console.log('Salon ID:', salonData.id);
-      setSalonId(salonData.id);
-
-      const { data: servicesData, error: servicesError } = await supabase
-        .from('services')
-        .select('*')
-        .eq('salon_id', salonData.id);
-
-      if (servicesError) {
-        console.error('Services error:', servicesError);
-        return;
-      }
-
-      console.log('Services loaded:', servicesData);
-      setServices(servicesData || []);
+      setSalonId(salon.id);
+      const { data } = await supabase.from('services').select('*').eq('salon_id', salon.id).order('created_at');
+      setServices(data || []);
     } catch (err: any) {
-      console.error('Error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddService = async (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!form.name.trim() || !form.price) { setError('Name und Preis erforderlich'); return; }
 
-    if (!salonId) {
-      setError('Salon ID nicht gefunden!');
-      return;
-    }
+    const { data, error: err } = await supabase.from('services').insert([{
+      salon_id: salonId,
+      name: form.name.trim(),
+      description: form.description.trim(),
+      price: parseFloat(form.price),
+      duration_minutes: parseInt(form.duration_minutes),
+      icon: form.icon,
+    }]).select().single();
 
-    if (!formData.name.trim()) {
-      setError('Service Name erforderlich!');
-      return;
-    }
-
-    if (!formData.price) {
-      setError('Preis erforderlich!');
-      return;
-    }
-
-    try {
-      console.log('Adding service...', {
-        salon_id: salonId,
-        name: formData.name,
-        price: parseFloat(formData.price),
-      });
-
-      const { data, error: insertError } = await supabase
-        .from('services')
-        .insert([{
-          salon_id: salonId,
-          name: formData.name.trim(),
-          description: formData.description.trim(),
-          price: parseFloat(formData.price),
-          duration_minutes: parseInt(formData.duration_minutes),
-          icon: formData.icon,
-        }])
-        .select();
-
-      if (insertError) {
-        console.error('Insert error:', insertError);
-        setError('Error: ' + insertError.message);
-        return;
-      }
-
-      console.log('Service added:', data);
-      setServices([...services, data[0]]);
-      setFormData({
-        name: '',
-        description: '',
-        price: '',
-        duration_minutes: '30',
-        icon: '💇',
-      });
-      setShowForm(false);
-    } catch (err: any) {
-      console.error('Error:', err);
-      setError('Error: ' + err.message);
-    }
+    if (err) { setError(err.message); return; }
+    setServices([...services, data]);
+    setForm({ name: '', description: '', price: '', duration_minutes: '30', icon: '💇' });
+    setShowForm(false);
   };
 
-  const handleDeleteService = async (id: string) => {
-    try {
-      const { error: deleteError } = await supabase
-        .from('services')
-        .delete()
-        .eq('id', id);
-
-      if (deleteError) {
-        setError('Error: ' + deleteError.message);
-        return;
-      }
-
-      setServices(services.filter(s => s.id !== id));
-    } catch (err: any) {
-      setError('Error: ' + err.message);
-    }
+  const handleDelete = async (id: string) => {
+    const { error: err } = await supabase.from('services').delete().eq('id', id);
+    if (err) { setError(err.message); return; }
+    setServices(services.filter(s => s.id !== id));
   };
 
-  if (loading) return <div className="p-6">Lädt...</div>;
+  if (loading) return <div className="flex items-center justify-center h-64 text-gray-400">Lädt...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">BeautyFlow</h1>
+    <div className="p-6 lg:p-10 max-w-6xl mx-auto">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-black text-gray-900">Services</h1>
+          <p className="text-gray-500 mt-1">{services.length} Dienstleistungen</p>
         </div>
+        <button onClick={() => setShowForm(!showForm)}
+          className="bg-black text-white font-bold px-5 py-2.5 rounded-xl hover:bg-gray-800 transition">
+          + Hinzufügen
+        </button>
       </div>
 
-      {/* Navigation */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-6 flex gap-8">
-          <a href="/dashboard" className="py-4 text-gray-600 hover:text-gray-900 border-b-2 border-transparent hover:border-blue-600">📊 Dashboard</a>
-          <a href="/dashboard/services" className="py-4 text-blue-600 font-bold border-b-2 border-blue-600">💇 Services</a>
-          <a href="/dashboard/staff" className="py-4 text-gray-600 hover:text-gray-900 border-b-2 border-transparent hover:border-blue-600">👥 Staff</a>
-          <a href="/dashboard/appointments" className="py-4 text-gray-600 hover:text-gray-900 border-b-2 border-transparent hover:border-blue-600">📅 Appointments</a>
-        </div>
-      </div>
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 text-sm">❌ {error}</div>}
 
-      {/* Main */}
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            ❌ {error}
-          </div>
-        )}
-
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">Dienstleistungen verwalten</h2>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-lg transition"
-          >
-            + Service hinzufügen
-          </button>
-        </div>
-
-        {showForm && (
-          <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
-            <h3 className="text-xl font-bold text-gray-900 mb-6">Neuer Service</h3>
-            <form onSubmit={handleAddService} className="space-y-5">
+      {/* Form */}
+      {showForm && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-8">
+          <h2 className="text-lg font-black text-gray-900 mb-5">Neuer Service</h2>
+          <form onSubmit={handleAdd} className="space-y-4">
+            {/* Icon picker */}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Icon</label>
+              <div className="flex gap-2 flex-wrap">
+                {ICONS.map(ic => (
+                  <button key={ic} type="button" onClick={() => setForm(f => ({ ...f, icon: ic }))}
+                    className={`text-2xl p-2 rounded-lg border-2 transition ${form.icon === ic ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-400'}`}>
+                    {ic}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Name *</label>
+              <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                required placeholder="z.B. Haarschnitt"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-black focus:outline-none transition" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Beschreibung</label>
+              <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                rows={2} placeholder="Optional..."
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-black focus:outline-none transition" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Service Name *</label>
-                <input
-                  type="text"
-                  placeholder="z.B. Haarschnitt"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:border-blue-600 focus:outline-none"
-                />
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Preis (€) *</label>
+                <input type="number" step="0.01" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
+                  required placeholder="29.99"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-black focus:outline-none transition" />
               </div>
-
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Beschreibung</label>
-                <textarea
-                  placeholder="Beschreibe den Service..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:border-blue-600 focus:outline-none"
-                  rows={3}
-                />
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Dauer (Min)</label>
+                <input type="number" value={form.duration_minutes} onChange={e => setForm(f => ({ ...f, duration_minutes: e.target.value }))}
+                  placeholder="30"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-black focus:outline-none transition" />
               </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button type="submit" className="flex-1 bg-black text-white font-bold py-3 rounded-xl hover:bg-gray-800 transition">✓ Speichern</button>
+              <button type="button" onClick={() => setShowForm(false)} className="flex-1 bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 transition">Abbrechen</button>
+            </div>
+          </form>
+        </div>
+      )}
 
-              <div className="grid grid-cols-3 gap-5">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Preis (€) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="29.99"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:border-blue-600 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Dauer (Min)</label>
-                  <input
-                    type="number"
-                    placeholder="30"
-                    value={formData.duration_minutes}
-                    onChange={(e) => setFormData({ ...formData, duration_minutes: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:border-blue-600 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Icon (Emoji)</label>
-                  <input
-                    type="text"
-                    placeholder="💇"
-                    maxLength={2}
-                    value={formData.icon}
-                    onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:border-blue-600 focus:outline-none text-center text-2xl"
-                  />
-                </div>
+      {/* Grid */}
+      {services.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
+          <div className="text-5xl mb-4">💇</div>
+          <p className="text-gray-500 font-medium">Noch keine Services</p>
+          <p className="text-gray-400 text-sm">Füge deinen ersten Service hinzu</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {services.map(s => (
+            <div key={s.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
+              <div className="text-4xl mb-3">{s.icon}</div>
+              <h3 className="text-lg font-black text-gray-900 mb-1">{s.name}</h3>
+              {s.description && <p className="text-gray-500 text-sm mb-4">{s.description}</p>}
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-2xl font-black text-gray-900">{s.price}€</span>
+                <span className="bg-gray-100 text-gray-600 text-sm font-medium px-3 py-1 rounded-full">{s.duration_minutes} Min</span>
               </div>
-
-              <div className="flex gap-3">
-                <button
-                  type="submit"
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition"
-                >
-                  ✓ Speichern
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold py-3 rounded-lg transition"
-                >
-                  ✕ Abbrechen
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {services.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <p className="text-xl text-gray-600">Noch keine Services hinzugefügt</p>
-            <p className="text-gray-500">Füge deinen ersten Service hinzu</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {services.map((service) => (
-              <div key={service.id} className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition">
-                <div className="text-5xl mb-4">{service.icon}</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{service.name}</h3>
-                
-                {service.description && (
-                  <p className="text-gray-600 text-sm mb-4">{service.description}</p>
-                )}
-
-                <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-xs text-gray-600">Preis</p>
-                      <p className="text-2xl font-bold text-blue-600">{service.price}€</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-600">Dauer</p>
-                      <p className="text-2xl font-bold text-blue-600">{service.duration_minutes}min</p>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handleDeleteService(service.id)}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg transition"
-                >
-                  🗑️ Löschen
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              <button onClick={() => handleDelete(s.id)}
+                className="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2 rounded-xl transition text-sm">
+                🗑️ Löschen
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
