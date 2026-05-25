@@ -10,8 +10,8 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
     );
 
-    // LOGIN - nicht signup!
-    const { data, error } = await supabase.auth.signInWithPassword({
+    // Signup
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
     });
@@ -20,19 +20,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 
-    // Check if salon exists
-    const { data: salonData } = await supabase
-      .from('salons')
-      .select('id')
-      .eq('user_id', data.user?.id)
-      .single();
+    // Auto-Create Salon
+    if (data.user) {
+      const { error: salonError } = await supabase
+        .from('salons')
+        .insert([{
+          user_id: data.user.id,
+          name: `${email.split('@')[0]}'s Salon`,
+          email: email,
+        }]);
 
-    const redirectPath = salonData ? '/dashboard' : '/setup';
+      if (salonError) {
+        console.error('Salon creation error:', salonError);
+      }
+    }
 
     return NextResponse.json({ 
       success: true, 
       user: data.user,
-      redirect: redirectPath
+      message: 'Signup successful! Please check your email.' 
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

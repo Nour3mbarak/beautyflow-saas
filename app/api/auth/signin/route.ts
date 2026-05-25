@@ -10,6 +10,7 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
     );
 
+    // Login
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -19,7 +20,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, user: data.user });
+    // Get Salon
+    const { data: salonData, error: salonError } = await supabase
+      .from('salons')
+      .select('id, name')
+      .eq('user_id', data.user?.id)
+      .single();
+
+    const salonSetup = salonData ? true : false;
+
+    return NextResponse.json({ 
+      success: true, 
+      user: data.user,
+      salonSetup: salonSetup,
+      redirect: salonSetup ? '/dashboard' : '/setup'
+    });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
