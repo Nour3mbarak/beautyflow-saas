@@ -3,6 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { createClient } from '@supabase/supabase-js'; // ← NEU
+
+// ← NEU: einmal außerhalb erstellen
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -17,25 +24,28 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/signin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      // ← NEU: direkt mit Supabase einloggen (speichert Session im Browser)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      const data = await response.json();
-      
-      if (data.success) {
-        router.push(data.redirect || '/dashboard');
-      } else {
-        setError(data.error || 'Login fehlgeschlagen');
+      if (error) {
+        setError(error.message);
+        return;
       }
+
+      // Session ist jetzt im Browser gespeichert ✓
+      router.push('/dashboard');
+
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
+
+  // ... Rest bleibt gleich, nur autocomplete hinzufügen:
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center px-4">
@@ -73,6 +83,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+               autoComplete="current-password"
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 focus:border-blue-600 focus:outline-none"
               placeholder="••••••••"
             />
