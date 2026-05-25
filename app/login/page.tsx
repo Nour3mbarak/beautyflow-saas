@@ -13,26 +13,35 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { full_name: name } },
-      });
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (error) { setError(error.message); return; }
-      if (data.user) router.push('/setup');
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    console.log('Login data:', data);  // ← NEU
+    console.log('Login error:', error); // ← NEU
+
+    if (error) { setError(error.message); return; }
+
+    const { data: salon, error: salonError } = await supabase
+      .from('salons')
+      .select('id')
+      .eq('user_id', data.user.id)
+      .single();
+
+    console.log('Salon:', salon);       // ← NEU
+    console.log('Salon error:', salonError); // ← NEU
+
+    router.push(salon ? '/dashboard' : '/setup');
+  } catch (err: any) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50 flex items-center justify-center px-4">
