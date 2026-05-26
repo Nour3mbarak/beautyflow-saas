@@ -3,117 +3,96 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
 
-export default function SignupPage() {
+export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setError('');
-  setLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
 
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const response = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-    console.log('Login data:', data);  // ← NEU
-    console.log('Login error:', error); // ← NEU
-
-    if (error) { setError(error.message); return; }
-
-    const { data: salon, error: salonError } = await supabase
-      .from('salons')
-      .select('id')
-      .eq('user_id', data.user.id)
-      .single();
-
-    console.log('Salon:', salon);       // ← NEU
-    console.log('Salon error:', salonError); // ← NEU
-
-    router.push(salon ? '/dashboard' : '/setup');
-  } catch (err: any) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+      const data = await response.json();
+      
+      if (data.success) {
+        router.push(data.redirect || '/dashboard');
+      } else {
+        setError(data.error || 'Login fehlgeschlagen');
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 rounded-full text-sm font-bold tracking-widest mb-6">
-            ✦ BEAUTYFLOW
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">BeautyFlow</h1>
+        <p className="text-gray-600 mb-6">Willkommen zurück!</p>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
           </div>
-          <h1 className="text-4xl font-black text-gray-900 mb-2">Konto erstellen</h1>
-          <p className="text-gray-500">Starte dein Salon-Business</p>
-        </div>
+        )}
 
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 text-sm">
-              ❌ {error}
-            </div>
-          )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 focus:border-blue-600 focus:outline-none"
+              placeholder="dein@salon.de"
+            />
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Vollständiger Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                autoComplete="name"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-black focus:outline-none transition"
-                placeholder="Max Mustermann"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-black focus:outline-none transition"
-                placeholder="dein@salon.de"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Passwort</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="new-password"
-                minLength={8}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-black focus:outline-none transition"
-                placeholder="Min. 8 Zeichen"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Passwort
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 focus:border-blue-600 focus:outline-none"
+              placeholder="••••••••"
+            />
+          </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-black hover:bg-gray-800 text-white font-bold py-3.5 rounded-xl transition disabled:opacity-40"
-            >
-              {loading ? 'Wird erstellt...' : 'Registrieren →'}
-            </button>
-          </form>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition disabled:opacity-50"
+          >
+            {loading ? 'Lädt...' : 'Login'}
+          </button>
+        </form>
 
-          <p className="text-center text-gray-500 text-sm mt-6">
-            Bereits registriert?{' '}
-            <Link href="/login" className="text-black font-bold hover:underline">Einloggen</Link>
-          </p>
-        </div>
+        <p className="text-center text-gray-600 mt-6">
+          Noch kein Konto?{' '}
+          <Link href="/signup" className="text-blue-600 hover:underline font-semibold">
+            Jetzt registrieren
+          </Link>
+        </p>
       </div>
     </div>
   );
