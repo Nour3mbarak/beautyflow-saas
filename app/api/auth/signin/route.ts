@@ -1,14 +1,21 @@
-import { createClient } from '@supabase/supabase-js';
-import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const { email, password } = body;
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-    );
+    if (!email || !password) {
+      return NextResponse.json(
+        { success: false, error: "Email und Password erforderlich" },
+        { status: 400 }
+      );
+    }
+
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -16,15 +23,21 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({ 
       success: true, 
       user: data.user,
-      redirect: '/dashboard'  // ← IMMER Dashboard!
+      redirect: "/dashboard"
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
   }
 }
